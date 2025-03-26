@@ -689,37 +689,63 @@ namespace WPEFramework
                 }
             }
         }
+	void NetworkManagerImplementation::platform_init()
+	{
+    	    LOG_ENTRY_FUNCTION();
 
-        void NetworkManagerImplementation::platform_init()
-        {
-            LOG_ENTRY_FUNCTION();
+    	    ::_instance = this;
+
+    	    uint32_t retry = 0; 
             char c;
+            IARM_Result_t retInt = IARM_RESULT_FAILED;
+            IARM_Result_t retConnect = IARM_RESULT_FAILED;
+            IARM_Result_t retIPCtimeout = IARM_RESULT_FAILED;
 
-            ::_instance = this;
+            do 
+            {
+               if(retInt != IARM_RESULT_SUCCESS && retInt != IARM_RESULT_INVALID_STATE)
+               {
+                  retInt = IARM_Bus_Init("netsrvmgr-thunder");
+                  if (retInt != IARM_RESULT_SUCCESS && retInt != IARM_RESULT_INVALID_STATE)
+                  {
+                     NMLOG_ERROR("IARM_Bus_Init failed on attempt %d, error: %d", retry, retInt);
+                     usleep(5001000);
+                     retry++;
+                     continue;
+                   }
+		   NMLOG_INFO("IARM_Bus_Init attempt %d: %d", retry, retInt);    
+               }
+		    
+               if (retConnect != IARM_RESULT_SUCCESS)
+               {
+                  retConnect = IARM_Bus_Connect();
+                //NMLOG_ERROR("%d",retConnect);
+                  if (retConnect != IARM_RESULT_SUCCESS)
+                  {
+                     NMLOG_ERROR("IARM Bus connection failed on attempt %d, error: %d", retry, retConnect);
+                     usleep(500*1000);
+                     retry++;
+                     continue;
+                   }
+                   NMLOG_ERROR("IARM_Bus_Connect attempt %d: %d", retry, retConnect);
+               }
 
-            IARM_Result_t res = IARM_Bus_Init("netsrvmgr-thunder");
-            NMLOG_INFO("IARM_Bus_Init: %d", res);
-            if (res == IARM_RESULT_SUCCESS || res == IARM_RESULT_INVALID_STATE /* already inited or connected */) {
-                res = IARM_Bus_Connect();
-                NMLOG_INFO("IARM_Bus_Connect: %d", res);
-            } else {
-                NMLOG_ERROR("IARM_Bus_Init failure: %d", res);
-            }
+               if (retIPCtimeout != IARM_RESULT_SUCCESS)
+               {
+                  retIPCtimeout = IARM_Bus_Call_with_IPCTimeout(IARM_BUS_NM_SRV_MGR_NAME, IARM_BUS_NETSRVMGR_API_isAvailable, (void *)&c, sizeof(c), (1000*10));
+                  if(retIPCtimeout != IARM_RESULT_SUCCESS)
+                  {
+                     NMLOG_INFO("NetSrvMgr is not available. Failed to activate NetworkManager Plugin, retry = %d", retry);
+                     usleep(500*1000);
+                     retry++;
+                     continue;
+                  }
+                  NMLOG_ERROR("IARM_Bus_Call attempt %d: %d", retry, retIPCtimeout);
+                  break; 
+              }
+            } while (retry < 3);
 
-
-            IARM_Result_t retVal = IARM_RESULT_SUCCESS;
-
-            uint32_t retry = 0;
-            do{
-                retVal = IARM_Bus_Call_with_IPCTimeout(IARM_BUS_NM_SRV_MGR_NAME, IARM_BUS_NETSRVMGR_API_isAvailable, (void *)&c, sizeof(c), (1000*10));
-                if(retVal != IARM_RESULT_SUCCESS){
-                    NMLOG_INFO("NetSrvMgr is not available. Failed to activate NetworkManager Plugin, retry = %d", retry);
-                    usleep(500*1000);
-                    retry++;
-                }
-            }while((retVal != IARM_RESULT_SUCCESS) && (retry < 3));
-
-            if(retVal != IARM_RESULT_SUCCESS)
+            if(retIPCtimeout != IARM_RESULT_SUCCESS)
             {
                 string msg = "NetSrvMgr is not available";
                 NMLOG_INFO("NETWORK_NOT_READY: The NetSrvMgr Component is not available.Retrying in separate thread ::%s::", msg.c_str());
