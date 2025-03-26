@@ -726,7 +726,6 @@ namespace WPEFramework
     	    LOG_ENTRY_FUNCTION();
 
     	    ::_instance = this;
-
     	    uint32_t retry = 0; 
             char c;
             IARM_Result_t retInt = IARM_RESULT_FAILED;
