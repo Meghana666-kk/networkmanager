@@ -607,14 +607,17 @@ namespace WPEFramework
                 NMLOG_WARNING("WARNING - cannot handle IARM events without a Network plugin instance!");
         }
 
-        void  NetworkManagerImplementation::threadEventRegistration(IARM_Result_t retInt, IARM_Result_t retConnect, IARM_Result_t retIPCtimeout)
+        void  NetworkManagerImplementation::threadEventRegistration(bool initResult)
         {
             uint32_t retry = 0; 
             char c;
+	    IARM_Result_t retInt = IARM_RESULT_SUCCESS;
+            IARM_Result_t retConnect = IARM_RESULT_SUCCESS;
+            IARM_Result_t retIPCtimeout = IARM_RESULT_SUCCESS;
 
             do 
             {
-               if(retInt != IARM_RESULT_SUCCESS)
+               if(initResult != true)
                {
                   retInt = IARM_Bus_Init("netsrvmgr-thunder");
                   if (retInt != IARM_RESULT_SUCCESS && retInt != IARM_RESULT_INVALID_STATE)
@@ -624,10 +627,12 @@ namespace WPEFramework
                      retry++;
                      continue;
                    }
-		   NMLOG_INFO("IARM_Bus_Init attempt %d: %d", retry, retInt);    
+		   NMLOG_INFO("IARM_Bus_Init attempt %d: %d", retry, retInt);
+	           
+	           initResult = true;	   
                }
 		    
-               if (retConnect != IARM_RESULT_SUCCESS)
+               if (initResult != true)
                {
                   retConnect = IARM_Bus_Connect();
                   if (retConnect != IARM_RESULT_SUCCESS)
@@ -638,9 +643,11 @@ namespace WPEFramework
                      continue;
                    }
                    NMLOG_ERROR("IARM_Bus_Connect attempt %d: %d", retry, retConnect);
+
+		   initResult = true;
                }
 
-               if (retIPCtimeout != IARM_RESULT_SUCCESS)
+               if (initResult != true)
                {
                   retIPCtimeout = IARM_Bus_Call_with_IPCTimeout(IARM_BUS_NM_SRV_MGR_NAME, IARM_BUS_NETSRVMGR_API_isAvailable, (void *)&c, sizeof(c), (1000*10));
                   if(retIPCtimeout != IARM_RESULT_SUCCESS)
@@ -651,6 +658,7 @@ namespace WPEFramework
                      continue;
                   }
                   NMLOG_ERROR("IARM_Bus_Call attempt %d: %d", retry, retIPCtimeout);
+		  initResult = true;
                   break; 
               }
 	    } while(1);	    
@@ -728,13 +736,15 @@ namespace WPEFramework
     	    ::_instance = this;
     	    uint32_t retry = 0; 
             char c;
-            IARM_Result_t retInt = IARM_RESULT_FAILED;
-            IARM_Result_t retConnect = IARM_RESULT_FAILED;
-            IARM_Result_t retIPCtimeout = IARM_RESULT_FAILED;
+	    bool initResult = false;
+
+            IARM_Result_t retInt = IARM_RESULT_SUCCESS;
+            IARM_Result_t retConnect = IARM_RESULT_SUCCESS;
+            IARM_Result_t retIPCtimeout = IARM_RESULT_SUCCESS;
 
             do 
             {
-               if(retInt != IARM_RESULT_SUCCESS)
+               if(initResult != true)
                {
                   retInt = IARM_Bus_Init("netsrvmgr-thunder");
                   if (retInt != IARM_RESULT_SUCCESS && retInt != IARM_RESULT_INVALID_STATE)
@@ -745,10 +755,11 @@ namespace WPEFramework
                      continue;
                    }
 		   NMLOG_INFO("IARM_Bus_Init attempt %d: %d", retry, retInt);
-		   retInt = IARM_RESULT_SUCCESS    
+
+		   initResult = true;    
                }
 		    
-               if (retConnect != IARM_RESULT_SUCCESS)
+               if (initResult != true)
                {
                   retConnect = IARM_Bus_Connect();
                   if (retConnect != IARM_RESULT_SUCCESS)
@@ -759,9 +770,11 @@ namespace WPEFramework
                      continue;
                    }
                    NMLOG_ERROR("IARM_Bus_Connect attempt %d: %d", retry, retConnect);
+
+		   initResult = true;
                }
 
-               if (retIPCtimeout != IARM_RESULT_SUCCESS)
+               if (initResult != true)
                {
                   retIPCtimeout = IARM_Bus_Call_with_IPCTimeout(IARM_BUS_NM_SRV_MGR_NAME, IARM_BUS_NETSRVMGR_API_isAvailable, (void *)&c, sizeof(c), (1000*10));
                   if(retIPCtimeout != IARM_RESULT_SUCCESS)
@@ -772,15 +785,17 @@ namespace WPEFramework
                      continue;
                   }
                   NMLOG_ERROR("IARM_Bus_Call attempt %d: %d", retry, retIPCtimeout);
+		  
+		  initResult = true;
                   break; 
               }
             } while (retry < 3);
 
-            if(retInt != IARM_RESULT_SUCCESS || retConnect != IARM_RESULT_SUCCESS || retIPCtimeout != IARM_RESULT_SUCCESS)
+            if(initResult != true)
             {
                 string msg = "NetSrvMgr is not available";
                 NMLOG_INFO("NETWORK_NOT_READY: The NetSrvMgr Component is not available.Retrying in separate thread ::%s::", msg.c_str());
-                m_registrationThread = thread(&NetworkManagerImplementation::threadEventRegistration, this, retInt, retConnect, retIPCtimeout);
+                m_registrationThread = thread(&NetworkManagerImplementation::threadEventRegistration, this, initResult);
             }
             else {
                 IARM_Bus_RegisterEventHandler(IARM_BUS_NM_SRV_MGR_NAME, IARM_BUS_NETWORK_MANAGER_EVENT_INTERFACE_ENABLED_STATUS, NetworkManagerInternalEventHandler);
