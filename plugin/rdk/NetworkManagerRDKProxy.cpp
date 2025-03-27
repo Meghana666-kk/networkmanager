@@ -734,7 +734,7 @@ namespace WPEFramework
     	    uint32_t retry = 0; 
             char c;
 	    bool initResult = false;
-	    bool connectResult = false	
+	    bool connectResult = false;	
 
             IARM_Result_t retInt = IARM_RESULT_SUCCESS;
             IARM_Result_t retConnect = IARM_RESULT_SUCCESS;
