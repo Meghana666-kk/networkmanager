@@ -782,7 +782,6 @@ namespace WPEFramework
                 }
                 NMLOG_ERROR("IARM_Bus_Call attempt %d: %d", retry, retIPCtimeout);
                 break; 
-              }
             } while (retry < 3);
 
             if(initResult != true || connectResult != true)
