@@ -784,7 +784,7 @@ namespace WPEFramework
                 break; 
             } while (retry < 3);
 
-            if(initResult != true || connectResult != true)
+            if(initResult != true || connectResult != true || retIPCtimeout != IARM_RESULT_SUCCESS)
             {
                 string msg = "NetSrvMgr is not available";
                 NMLOG_INFO("NETWORK_NOT_READY: The NetSrvMgr Component is not available.Retrying in separate thread ::%s::", msg.c_str());
